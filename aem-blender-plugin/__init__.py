@@ -2,11 +2,11 @@ import bpy
 from . import importer, exporter
 bl_info = {
     "name": "AEM Blender Plugin",
-    "author": "Chuck Norris",
-    "version": (1, 7),
+    "author": "Baal Netbek",
+    "version": (1, 8),
     "blender": (4, 1, 0),
     "location": "File > Import-Export",
-    "description": "AByss Engine Mesh V4,V5 Import / V5 Export",
+    "description": "AByss Engine Mesh Import / ? Export",
     "warning": "",
     "category": "Import-Export",
 }
