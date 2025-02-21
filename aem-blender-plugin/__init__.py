@@ -11,44 +11,6 @@ bl_info = {
     "category": "Import-Export",
 }
 
-SCALE = 0.01
-
-FLAGS = {
-    "basemesh":1|16, #10001 every mesh should have it
-    "uvs":2,        #00010 texture coordinates
-    "normals":4,    #00100
-    "unk":8,        #01000 per vertex attributes of some kind
-}
-VERSION = {
-    "AEMesh\x00":1,
-    "V2AEMesh\x00":2,
-    "V3AEMesh\x00":3,
-    "V4AEMesh\x00":4,
-    "V5AEMesh\x00":5
-}  
-   
-
-
-'''    
-def parse_animation(f):
-    #read, test, go back
-    unpack("3h", f.read(6))
-    #type = f.read(2)
-    if type == 0:
-    if type == 1:
-    if type == 2:
-        #4 floats?
-    if type == 3:
-        read_float_twins_array(3, f)
-    if type == 4:
-        read read_float_quadruplets_array(2, f)
-    if type == 5:
-        read read_float_quadruplets_array(5, f) 
-        # (t, x, y, z)
-    if type == 6:
-    if type == 10:
-'''    
-
 def register():
     bpy.utils.register_class(importer.ImportAEM)
     bpy.utils.register_class(exporter.ExportAEM)

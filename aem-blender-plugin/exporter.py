@@ -5,19 +5,12 @@ from bpy.props import StringProperty, FloatProperty, BoolProperty, EnumProperty
 from bpy.types import Operator
 from math import pi
 from mathutils import Matrix, Vector
-from struct import unpack, pack, calcsize
+from struct import pack
 import bmesh
 
 from . import common
-from .BoundingSphere import build_bounding_sphere
+from .common import VERSION
 
-VERSION = {
-    "AEMesh\x00": 1,
-    "V2AEMesh\x00": 2,
-    "V3AEMesh\x00": 3,
-    "V4AEMesh\x00": 4,
-    "V5AEMesh\x00": 5
-}
                
 def export_aem(mesh, file_path, aem_version, triangulate_method, SCALE):
 

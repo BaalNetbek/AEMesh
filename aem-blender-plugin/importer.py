@@ -4,28 +4,14 @@ from bpy_extras.io_utils import ImportHelper
 from bpy.props import StringProperty, FloatProperty, BoolProperty, CollectionProperty
 from bpy.types import Operator
 from math import pi
-from mathutils import Matrix, Vector
-from struct import unpack, calcsize
-import bmesh
+from struct import unpack
+
 
 from . import common
+from .common import FLAGS, VERSION
 from .read_helper import * 
 from .BoundingSphere import build_bounding_sphere
 
-FLAGS = {
-    "basemesh": 1 | 16,  # every mesh should have it
-    "uvs": 2,           # texture coordinates
-    "normals": 4,
-    "unk": 8,           # per vertex attributes of some kind
-}
-
-VERSION = {
-    "AEMesh\x00": 1,
-    "V2AEMesh\x00": 2,
-    "V3AEMesh\x00": 3,
-    "V4AEMesh\x00": 4,
-    "V5AEMesh\x00": 5
-}
 
 def sign_check(c, cs):
     if (cs == -1 and c < 0) or (cs == 0x0 and c >= 0):
@@ -206,7 +192,7 @@ def import_aem(file_path, import_normals=True):
                 print(importer_state)
                 importer_state = "END"
                 if version in (3, 4, 5):
-                    import red
+                    from . import red
                     mesh = red.Mesh()
                     mesh.read_enhanced_data_from_file(file_aem, flags)
                     print((mesh.transform))
