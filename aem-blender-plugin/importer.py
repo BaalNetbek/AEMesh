@@ -8,10 +8,17 @@ from struct import unpack
 
 
 from . import common
-from .common import FLAGS, VERSION
+from .common import FLAGS
 from .read_helper import * 
 from .BoundingSphere import build_bounding_sphere
 
+VERSION = {
+    "AEMesh\x00": 1,
+    "V2AEMesh\x00": 2,
+    "V3AEMesh\x00": 3,
+    "V4AEMesh\x00": 4,
+    "V5AEMesh\x00": 5
+}
 
 def sign_check(c, cs):
     if (cs == -1 and c < 0) or (cs == 0x0 and c >= 0):
@@ -30,7 +37,7 @@ def triangle_strips_unpack(indices, tstrip_array):
         i += strip  
     return unpacked
     
-def import_aem(file_path, import_normals=True):
+def import_aem(file_path):
     print(f"\nLoading: {os.path.basename(file_path)}")
     importer_state = "READ_HEADER"  
     with open(file_path, 'rb') as file_aem:
@@ -77,7 +84,7 @@ def import_aem(file_path, import_normals=True):
                     vertices = read_float_triplets_array(file_aem, v_num * 3)
                     if uvs_present:
                         uvs = read_float_twins_array(file_aem, v_num * 2)
-                    if import_normals and normals_present:
+                    if normals_present:
                         normals = read_float_triplets_array(file_aem, v_num*3)
                     if unk_present:
                         try:
@@ -123,7 +130,7 @@ def import_aem(file_path, import_normals=True):
                         uv_block = read_short_twins_array(file_aem, v_num*2) 
                         #print(f"UVS maximum raw value {max(uv_block)}")
                         uvs = [(u*UV_UNIT_POINT, v*UV_UNIT_POINT) for u, v in uv_block]
-                    if import_normals and normals_present:
+                    if normals_present:
                         normals_block = read_short_triplets_array(file_aem, v_num*3)
                         normals = [(x*NORMALS_UNIT_POINT, y*NORMALS_UNIT_POINT, z*NORMALS_UNIT_POINT) for x, y, z in normals_block]
                     if unk_present:
@@ -176,7 +183,7 @@ def import_aem(file_path, import_normals=True):
                             loop_vert_index = mesh.loops[loop_index].vertex_index
                             uv_layer.data[loop_index].uv = uvs[loop_vert_index]
                 
-                if import_normals and normals_present:
+                if normals_present:
                     mesh.normals_split_custom_set_from_vertices(normals)
                     obj.data.shade_smooth()
                 
@@ -231,9 +238,9 @@ class ImportAEM(Operator, ImportHelper):
         min=0.001, max=1.0
     )
     
-    import_normals: BoolProperty(
-        name="Import Normals",
-        description="Choose whether to import normals or not",
+    dummy_property: BoolProperty(
+        name="Dummy toggle",
+        description="Does nothing",
         default=True,
     )
     

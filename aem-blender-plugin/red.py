@@ -76,12 +76,13 @@ class Mesh:
             """
             transform = Transform()
 
-            # Read first type (2 bytes)
+            
             type_data = file_obj.read(2)
             if len(type_data) != 2:
                 return -1
             type_val = struct.unpack('h', type_data)[0]
 
+            # Translation
             if type_val == 1:
                 key_frame_cnt = struct.unpack('h', file_obj.read(2))[0]
                 for _ in range(key_frame_cnt):
@@ -105,12 +106,13 @@ class Mesh:
                         else:
                             transform.insert_keyframe(value, 1, int(time))
 
-            # Read second type
+            
             type_data = file_obj.read(2)
             if len(type_data) != 2:
                 return -1
             type_val = struct.unpack('h', type_data)[0]
 
+            # Rotation
             if type_val == 1:
                 key_frame_cnt = struct.unpack('h', file_obj.read(2))[0]
                 for _ in range(key_frame_cnt):
@@ -132,12 +134,13 @@ class Mesh:
                             print(file_obj.tell())
                         transform.insert_keyframe(value, key_types[i], int(time))
 
-            # Read third type
+            
             type_data = file_obj.read(2)
             if len(type_data) != 2:
                 return -1
             type_val = struct.unpack('h', type_data)[0]
 
+            # Scale
             if type_val == 1:
                 key_frame_cnt = struct.unpack('h', file_obj.read(2))[0]
                 for _ in range(key_frame_cnt):
@@ -186,6 +189,9 @@ class Mesh:
                                 value = (value * math.pi) / 180.0
                             transform.insert_keyframe(value, key_types[i], int(time))
                             self.field_0x85 = 1
+                    padding = file_obj.read(2)
+                    if padding != b'\x00\x00':
+                        print("UNEXPECTED BYTES %s  @ %d" % (padding.hex() ,file_obj.tell()-2))
 
             if transform.get_keyframe_count() < 1:
                 return -1

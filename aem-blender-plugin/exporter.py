@@ -3,148 +3,116 @@ import bpy, os
 from bpy_extras.io_utils import ExportHelper
 from bpy.props import StringProperty, FloatProperty, BoolProperty, EnumProperty
 from bpy.types import Operator
-from math import pi
-from mathutils import Matrix, Vector
 from struct import pack
 import bmesh
 
 from . import common
-from .common import VERSION
+
+VERSION = {
+    1: b"AEMesh\x00",
+    2: b"V2AEMesh\x00",
+    3: b"V3AEMesh\x00",
+    4: b"V4AEMesh\x00",
+    5: b"V5AEMesh\x00"
+}
 
                
 def export_aem(mesh, file_path, aem_version, triangulate_method, SCALE):
-
-    '''Arguments: mesh, triangulation method.
-    Triangulates and splits faces of the mesh for compatibility with AEM format,
-    and rotates the mesh 90 degrees clockwise around the X-axis.'''
-    
-    bm = bmesh.new()
-    bm.from_mesh(mesh)
-    rotation_matrix = Matrix.Rotation(-pi / 2, 4, 'X')
-    bmesh.ops.transform(bm, matrix=rotation_matrix, verts=bm.verts)
-    bmesh.ops.triangulate(bm, faces=bm.faces, quad_method = triangulate_method)
-    bmesh.ops.split_edges(bm, edges=bm.edges)
-    bm.edges.ensure_lookup_table()
-
-    def uv_from_vert_first(uv_layer, v):
-        for l in v.link_loops:
-            uv_data = l[uv_layer]
-            return uv_data.uv
-        return None
-
-    def uv_from_vert_average(uv_layer, v):
-        uv_average = Vector((0.0, 0.0))
-        total = 0.0
-        for loop in v.link_loops:
-            uv_average += loop[uv_layer].uv
-            total += 1.0
-
-        if total != 0.0:
-            return uv_average * (1.0 / total)
-        else:
-            return None
-
-    # Example using the functions above
-    uv_layer = bm.loops.layers.uv.active
-    uv_per_vertex = []
-    for v in bm.verts:
-        uv_first = uv_from_vert_first(uv_layer, v)
-        uv_per_vertex.append(uv_first)
-        uv_average = uv_from_vert_average(uv_layer, v)
-        print("Vertex: %r, uv_first=%r, uv_average=%r" % (v, uv_first, uv_average))
-    bmnormals = []
-    for v in bm.verts:
-        # Custom normals are stored in the `normal` attribute of each vertex
-        # But note, this is not directly "split normals" but rather the custom normal for this vertex
-        bmnormals.append([*v.normal])
-
- 
-    bm.to_mesh(mesh)
-    bm.free()
-
-    
-    #faces = [face.vertices for face in mesh.polygons]
-    #vertices = [v.co for v in mesh.vertices]
-    uv_layer = mesh.uv_layers.active.data if mesh.uv_layers.active else None
-    uvs = [uv.uv for uv in uv_layer] if uv_layer else []
-    uvs = [uv.uv for uv in mesh.uv_layers.active.data]
-    normals = [v.normal for v in mesh.vertices]
-
-    # Extract vertices and faces
-    #vertices = [(v.co.x, v.co.y, v.co.z) for v in mesh.vertices]
-    #faces = [(t.vertices[0], t.vertices[1], t.vertices[2]) for t in mesh.loop_triangles]
-    #faces = [[*t.vertices] for t in mesh.loop_triangles]
-    
-
-    
-    def write_short(file, value, endian='<'):
-        """Writes a short integer to a binary file."""
-        file.write(pack(f'{endian}h', value))
-
-    def write_short_triplets_array(file, array, endian='<'):
-        """Writes an array of 3-tuple shorts to a binary file."""
-        for triplet in array:
-            file.write(pack(f'{endian}hhh', *triplet))
-    
-
-    def write_float_triplets_array(file, array, endian='<'):
-        """Writes an array of 3-tuple floats to a binary file."""
-        for triplet in array:
-            file.write(pack(f'{endian}fff', *triplet))
-    
-
-    addon_directory = os.path.dirname(os.path.abspath(__file__))
-    header_file_path = os.path.join(addon_directory, 'header.bin')
-    
-    with open(header_file_path, 'rb') as file_header, open(file_path, 'wb') as file_aem:
-        header = file_header.read(24)
+   
+    with open(file_path, 'wb') as file_aem:
+        magic = VERSION[4]
+        pivot = pack("<bH3f", 0x17, 1,*(0,0,0))
+        header = magic + pivot
         file_aem.write(header)
+               
+        obj = bpy.context.active_object
+        if obj is None or obj.type != 'MESH':
+            print("Please select a mesh object")
+            return
+        mesh = obj.data
+        bm = bmesh.new()
+        bm.from_mesh(mesh)
+        bmesh.ops.triangulate(bm, faces=bm.faces)
+        me = mesh.copy()
+        bm.to_mesh(me)
+        bm.free()
+        del bm
         
-
-        indices = []
-        for poly in mesh.polygons:
-            for loop_index in poly.loop_indices:
-                indices.append(mesh.loops[loop_index].vertex_index)
-        indices_num = len(indices)
-        write_short(file_aem, indices_num)
-        #print(faces)
-        #write_short_triplets_array(file_aem, faces)
-        #print(*indices)
-        file_aem.write(pack(f"{indices_num}H", *indices))
-        
-        vertices = [(v.co.x, v.co.y, v.co.z) for v in mesh.vertices]#[*(v.co for v in mesh.vertices)]
-        v_num = len(vertices)
-        write_short(file_aem, v_num)
-        write_float_triplets_array(file_aem, vertices)
-    
-        #uv_layer = mesh.uv_layers.active.data if mesh.uv_layers.active else None
-        #uvs = [uv.uv for uv in uv_layer] if uv_layer else []
-        #print(*uvs)
-        #for uv in uvs:
-        #    file_aem.write(pack("ff", uv[0], uv[1]))
-        for uv in uv_per_vertex:
-            print(uv)
-            if uv is not None:
-                file_aem.write(pack(f"2f", uv[0],uv[1]))
-
-        #normals = [v.normal for v in mesh.vertices]
-        write_float_triplets_array(file_aem, bmnormals)   
-        #file_aem.write(pack(f"{len(bmnormals)}f", *bmnormals))
         """
-        processed_vertices = [False] * len(mesh.vertices)
-        for poly in mesh.polygons:
-            for loop_index in poly.loop_indices:
-                loop = mesh.loops[loop_index]
-                vertex_index = loop.vertex_index
-                if not processed_vertices[vertex_index]:
-                    normal = normals[mesh.loops[loop_index].vertex_index]
-                    print(normal.x, normal.y, normal.z, "\n")
-                    file_aem.write(pack("fff", normal.x, normal.y, normal.z))"""
-        # mesh.use_auto_smooth = True
+        uv_layer = None
+        if bm.loops.layers.uv:
+            uv_layer = bm.loops.layers.uv.active
+       
+        for face in bm.faces:
+            next_face = []
+            
+            for loop in face.loops:
+                x, y, z = loop.vert.co
+                
+                u, v = (0, 0)
+                if uv_layer:
+                    u, v = loop[uv_layer].uv
 
-           
-        header = file_header.read(56)
-        file_aem.write(header)
+                nx, ny, nz = loop.vert.normal
+        """
+    
+        vertices = me.vertices
+        uv_layer = None        
+        if len(me.uv_layers) > 0:
+            uv_layer = me.uv_layers.active.data[:]        
+        loops = me.loops
+        polygons = me.polygons
+        v_buffer = {} # Maps unique vertex data to index
+        f_buffer = []
+        vi = 0
+
+        for polygon in polygons:
+            next_face = [] # 3 v, 3 vn, 2 vt
+            for li in polygon.loop_indices:
+                # append vertex
+                vid = loops[li].vertex_index
+                x, y, z  = vertices[vid].co
+                loops[li].vertex_index
+
+                # append uv
+                u, v = (0, 0)
+                if uv_layer:
+                    u, v = uv_layer[li].uv
+
+                # append normal
+                nx, ny, nz = loops[li].normal
+                
+                unique_v = (
+                    round(x, 6), round(z, 6), round(-y, 6),
+                    round(u, 6), round(v, 6),
+                    round(nx, 6), round(nz, 6), round(-ny, 6)
+                )
+                
+                if unique_v not in v_buffer:
+                    v_buffer[unique_v] = vi
+                    fv = vi
+                    vi += 1
+                else:
+                    fv = v_buffer[unique_v]
+                    
+                next_face.append(fv)
+            
+            f_buffer.append(next_face)
+        bpy.data.meshes.remove(me)
+
+        fi_num = len(f_buffer)*3   
+        file_aem.write(pack("H", fi_num))         
+        file_aem.write(pack(f"{fi_num}H", *(i for sub in f_buffer for i in sub)))
+        v_num = len(v_buffer)
+        file_aem.write(pack("H", v_num))
+        file_aem.write(pack(f"{v_num*3}f", *(v for ver in v_buffer for v in ver[:3])))
+        file_aem.write(pack(f"{v_num*2}f", *(t for ver in v_buffer for t in ver[3:5])))
+        file_aem.write(pack(f"{v_num*3}f", *(n for ver in v_buffer for n in ver[5:])))
+
+
+        bsphere = pack("4f", *(0,0,0,1000))
+        animation = pack("7H", *(1,0,1,0,1,0,0))
+        file_aem.write(bsphere + animation)
 
 
 
@@ -256,7 +224,7 @@ class ExportAEM(Operator, ExportHelper):
                 '''
                 #self.prepare_mesh(mesh, self.triangulate_method)
                 
-                export_aem(mesh, self.filepath.replace(".aem", f"_{obj.name}.aem"), VERSION[self.aem_version+"\x00"], self.scale, self.triangulate_method)
+                export_aem(mesh, self.filepath.replace(".aem", f"_{obj.name}.aem"), VERSION[self.aem_version+"\x00"], self.triangulate_method, self.scale)
                 bpy.data.meshes.remove(mesh)
             else:
                 self.report({'WARNING'}, f"File {file_out} already exists and overwrite is disabled.")
