@@ -224,7 +224,7 @@ class ExportAEM(Operator, ExportHelper):
                 '''
                 #self.prepare_mesh(mesh, self.triangulate_method)
                 
-                export_aem(mesh, self.filepath.replace(".aem", f"_{obj.name}.aem"), VERSION[self.aem_version+"\x00"], self.triangulate_method, self.scale)
+                export_aem(mesh, self.filepath.replace(".aem", f"_{obj.name}.aem"), 4, self.triangulate_method, self.scale)
                 bpy.data.meshes.remove(mesh)
             else:
                 self.report({'WARNING'}, f"File {file_out} already exists and overwrite is disabled.")
