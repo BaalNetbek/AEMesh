@@ -1,6 +1,19 @@
 import struct
 import math
 
+TRAN_X = 1
+TRAN_Y = 2 
+TRAN_Z = 4
+TRAN_XYZ = 7
+ROT_X = 0x40
+ROT_Y = 0x80 
+ROT_Z = 0x100
+ROT_XYZ = 0x1c0
+SCALE_X = 8
+SCALE_Y = 0x10
+SCALE_Z = 0x20
+SCALE_XYZ = 0x38
+
 class Transform:
     def __init__(self):
         self.keyframes = []

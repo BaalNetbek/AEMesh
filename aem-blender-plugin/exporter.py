@@ -62,8 +62,9 @@ def export_aem(mesh, file_path, aem_version, triangulate_method, SCALE):
             uv_layer = me.uv_layers.active.data[:]        
         loops = me.loops
         polygons = me.polygons
-        v_buffer = {} # Maps unique vertex data to index
+        unique_v_buffer = {} # Maps unique vertex data to index
         f_buffer = []
+        v_buffer = []
         vi = 0
 
         for polygon in polygons:
@@ -87,14 +88,17 @@ def export_aem(mesh, file_path, aem_version, triangulate_method, SCALE):
                     round(u, 6), round(v, 6),
                     round(nx, 6), round(nz, 6), round(-ny, 6)
                 )
-                
-                if unique_v not in v_buffer:
-                    v_buffer[unique_v] = vi
+                '''
+                if unique_v not in unique_v_buffer:
+                    unique_v_buffer[unique_v] = vi
                     fv = vi
                     vi += 1
                 else:
-                    fv = v_buffer[unique_v]
-                    
+                    fv = unique_v_buffer[unique_v]'''
+                v_buffer += [unique_v]
+                fv = vi
+                vi += 1
+                
                 next_face.append(fv)
             
             f_buffer.append(next_face)
