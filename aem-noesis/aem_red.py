@@ -1,0 +1,1 @@
+D:/GAME_HACKING/Noesis/plugins/python/aem_red.py
