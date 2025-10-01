@@ -1,15 +1,22 @@
+# 2025 Baal Netbek
 #Noesis AEMesh import (not export) module
 from inc_noesis import *
 from struct import pack
 from collections import defaultdict
-import os
+
+import sys, os
+scriptDir = os.path.dirname(__file__) + '/ae/'
+sys.path.append(scriptDir) if scriptDir not in sys.path else sys.path
+import aem_red
+from read_helpers import *
+
 
 def registerNoesisTypes():
 	handle = noesis.register("Abyss Engine Mesh", ".aem")
 	noesis.setHandlerTypeCheck(handle, aemCheckType)
 	noesis.setHandlerLoadModel(handle, aemLoadModel)
-	noesis.setHandlerWriteModel(handle, noepyWriteModel)
-	noesis.setHandlerWriteAnim(handle, noepyWriteAnim)
+	#noesis.setHandlerWriteModel(handle, noepyWriteModel)
+	#noesis.setHandlerWriteAnim(handle, noepyWriteAnim)
 	#any noesis.NMSHAREDFL_* flags can be applied here, to affect the model which is handed off to the exporter.
 	#adding noesis.NMSHAREDFL_FLATWEIGHTS_FORCE4 would force us to 4 weights per vert.
 	noesis.setTypeSharedModelFlags(handle, noesis.NMSHAREDFL_FLATWEIGHTS)
@@ -48,78 +55,6 @@ def aemCheckType(data):
     
     return 1
 
-def read_float_array(file, len):
-	return file.read('{0}f'.format(len))
-
-def read_short_array(file, len, endian='<'):
-    return file.read('{0}h'.format(len))
-
-def read_short_twins_array(file, len, endian='<'):
-    if (len % 2 != 0): raise ValueError("Twins array length must be a multiple of 2")
-    flat_array = file.read('{0}h'.format(len))
-    return list(zip(flat_array[0::2], flat_array[1::2]))
-
-def read_short_triplets_array(file, len, endian='<'):
-    if (len % 3 != 0): raise ValueError("Triplets array length must be a multiple of 3")
-    flat_array = file.read('{0}h'.format(len))
-    return list(zip(flat_array[0::3], flat_array[1::3], flat_array[2::3]))
-
-def read_short_NoeVec3_array(file, length, endian='<'):
-    if (length % 3 != 0): raise ValueError("Triplets array length must be a multiple of 3")
-    flat_array = file.read('{0}h'.format(length))
-    return [NoeVec3([flat_array[i], flat_array[i+1], flat_array[i+2]])
-            for i in range(0, length, 3)]
-
-def read_ushort_triplets_array(file, len, endian='<'):
-    if (len % 3 != 0): raise ValueError("Triplets array length must be a multiple of 3")
-    flat_array = file.read('{0}H'.format(len))
-    return list(zip(flat_array[0::3], flat_array[1::3], flat_array[2::3]))
-
-def read_short_quadruplets_array(file, len, endian='<'):
-    if (len % 4 != 0): raise ValueError("Quadruplets array length must be a multiple of 4")
-    flat_array = file.read('{0}h'.format(len))
-    return list(zip(flat_array[0::4], flat_array[1::4], flat_array[2::4], flat_array[3::4]))
-
-def read_short_hexlets_array(file, len, endian='<'):
-    if (len % 6 != 0): raise ValueError("Hexlets array length must be a multiple of 4")
-    flat_array = file.read('{0}h'.format(len))
-    print(max(flat_array))
-    print(min(flat_array))
-    return list(zip(flat_array[0::6], flat_array[1::6], flat_array[2::6], flat_array[3::6], flat_array[4::6], flat_array[5::6]))    
-
-def read_float_quadruplets_array(file, len, endian='<'):
-    if (len % 4 != 0): raise ValueError("Quadruplets array length must be a multiple of 4")
-    flat_array = file.read('{0}f'.format(len))
-    return list(zip(flat_array[0::4], flat_array[1::4], flat_array[2::4], flat_array[3::4]))
-  
-def read_float_triplets_array(file, len, endian='<'):
-    if (len % 3 != 0): raise ValueError("Triplets array length must be a multiple of 3")
-    flat_array = file.read('{0}f'.format(len))
-    return list(zip(flat_array[0::3], flat_array[1::3], flat_array[2::3]))
-
-def read_float_triplets_array(file, len, endian='<'):
-    if (len % 3 != 0): raise ValueError("Triplets array length must be a multiple of 3")
-    flat_array = file.read('{0}f'.format(len))
-    return list(zip(flat_array[0::3], flat_array[1::3], flat_array[2::3]))
-
-def read_float_NoeVec3_array(file, length, endian='<'):
-    if length % 3 != 0:
-        raise ValueError("Triplets array length must be a multiple of 3")
-    flat_array = file.read('{0}f'.format(length))
-    return [NoeVec3([flat_array[i], flat_array[i+1], flat_array[i+2]])
-            for i in range(0, length, 3)]
-
-def read_float_twins_array(file, len, endian='<'):
-    if (len % 2 != 0): raise ValueError("Twins array length must be a multiple of 2")
-    flat_array = file.read('{0}f'.format(len))
-    return list(zip(flat_array[0::2], flat_array[1::2]))
-
-def read_float_NoeVec3_UV_array(file, len, endian='<'):
-    if (len % 2 != 0): raise ValueError("Twins array length must be a multiple of 2")
-    flat_array = file.read('{0}f'.format(len))
-    return [NoeVec3([flat_array[i], -flat_array[i+1], 0])
-        for i in range(0, len, 2)]
-
 def sign_check(c, cs):
     if (cs == -1 and c < 0) or (cs == 0x0 and c >= 0):
         return 1
@@ -143,9 +78,9 @@ def aemLoadModel(data, mdlList):
     ctx = rapi.rpgCreateContext()
     bones = []
     root_bone = NoeBone(0, "root", NoeMat43())
-    texture = NoeTexture("dummyTexture", 2,2,b'\xff\xff\xff\xff\x00\x00\x00\x00\x00\x00\x00\x00\xff\xff\xff\xff',  noesis.NOESISTEX_RGBA32) 
+  
     print(os.path.dirname(os.path.realpath(__file__)))
-    material = NoeMaterial("defMaterial", os.path.dirname(os.path.realpath(__file__))+r"\test.bmp")
+    material = NoeMaterial("defMaterial", os.path.dirname(os.path.realpath(__file__))+"/ae/test.bmp")
     bones.append(root_bone)
 
     meshes = []
@@ -200,10 +135,9 @@ def aemLoadModel(data, mdlList):
                     if uvs_present:
                         uvs = read_float_NoeVec3_UV_array(file_aem, v_num * 2)
                     if normals_present:
-                        normals = read_float_NoeVec3_array(file_aem, v_num*3)
+                        normals = read_float_NoeVec3_array(file_aem, v_num * 3)
                     if unk_present:
                         try:
-                            #some_quaternions = read_float_quadruplets_array(file_aem, 4* v_num)
                             some_quaternions = read_float_array(file_aem, 4* v_num)
                             if any(i != 1 for i in some_quaternions):
                                 print("Abnormality in the unknown values!")
@@ -280,12 +214,9 @@ def aemLoadModel(data, mdlList):
                 
                 bone_name = "submesh_" + str(bon_idx)
                 
-                # The bone's initial matrix is its position in the scene.
-                # For this example, we'll just use an identity matrix because the vertex positions are already in world space.
-                # If your vertices are in local space, this matrix should transform them to world space.
                 bone_matrix = NoeMat43() 
                 indices = [x for tup in faces for x in tup]
-                # Parent each submesh bone to the root
+
                 bone = NoeBone(bon_idx, bone_name, bone_matrix, "root")
                 bones.append(bone)
 
@@ -295,9 +226,9 @@ def aemLoadModel(data, mdlList):
                 if uvs_present:
                     mesh.setUVs(uvs)
                 mesh.setMaterial("defMaterial")
-                #bone_index_for_this_mesh = bon_idx + 1
+
                 kf_bone = NoeKeyFramedBone(bon_idx)
-                # Create vertex weights
+
                 vert_weights = []
                 for v in range(len(vertices)):
                     weight = NoeVertWeight([bon_idx], [1.0])
@@ -312,8 +243,7 @@ def aemLoadModel(data, mdlList):
                 else:
                      
                     importer_state = "END"
-                
-                    
+                            
             if importer_state == "READ_ANIM": 
                 print(importer_state)
                 importer_state = "END"
@@ -344,7 +274,7 @@ def aemLoadModel(data, mdlList):
                     bone = NoeBone(bon_idx, "mesh_{0}".format(bon_idx), boneMat, "mesh_0", 0)
                     bones.append(bone)
                 if version in (4, 5):
-                    import aem_red
+                    
                     mesh = aem_red.Mesh()
                     red_success = mesh.read_enhanced_data_from_file(file_aem, flags)
                     print((mesh.transform))
@@ -462,11 +392,11 @@ def aemLoadModel(data, mdlList):
                         print (scale_keys)
                         kf_bone.setScale(scale_keys, noesis.NOEKF_SCALE_VECTOR_3)
                         
-                        # Add the animated bone to our list
+
                         if kf_bone.hasAnyKeys():
                             kf_bones.append(kf_bone)
                         if len(kf_bones) > 0:
-                            # The bone list here should be the same as the main model's bone list
+
                             noe_anim = NoeKeyFramedAnim("lAnimation", bones, kf_bones, mesh.transform.timeBetweenFrames/1000) # 30.0 = frameRate
                             anims.append(noe_anim)
                       
@@ -475,12 +405,15 @@ def aemLoadModel(data, mdlList):
 
             if importer_state == "END": 
                 mdl = NoeModel(meshes, bones, anims)
-                nmm = NoeModelMaterials([texture],[material])
+                nmm = NoeModelMaterials([],[material])
                 mdl.setModelMaterials(nmm)
-                # Add the completed model to the list for Noesis to display
+
                 mdlList.append(mdl)  
                 return 1 
 
+#TODO add write functions
+
+# example code
 #write it
 def noepyWriteModel(mdl, bs):
 	anims = rapi.getDeferredAnims()
