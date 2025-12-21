@@ -2,6 +2,7 @@ import struct
 import math
 
 # keframe types
+# since V3 
 TRAN_X = 1
 TRAN_Y = 2 
 TRAN_Z = 4
@@ -14,6 +15,7 @@ SCALE_X = 8
 SCALE_Y = 0x10
 SCALE_Z = 0x20
 SCALE_XYZ = 0x38
+
 OPACITY = 0x200 # need verify
 
 _type2str = {

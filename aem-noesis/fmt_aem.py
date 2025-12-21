@@ -29,7 +29,8 @@ FLAGS = {
     "basemesh": 1 | 16,  # every mesh should have it
     "uvs": 2,           # texture coordinates
     "normals": 4,
-    "unk": 8,           # per vertex attributes of some kind
+    "colors": 8,           # vertex colors
+    #"indices": 16, #glDrawArrays optimized index buffer
 }
 
 VERSION = {
@@ -107,7 +108,7 @@ def aemLoadModel(data, mdlList):
                 if mesh_present:
                     uvs_present = bool(flags & FLAGS["uvs"])
                     normals_present = bool(flags & FLAGS["normals"])
-                    unk_present = bool(flags & FLAGS["unk"])
+                    unk_present = bool(flags & FLAGS["colors"])
                     version = VERSION[magic]
                     
                     submesh_num = 1
