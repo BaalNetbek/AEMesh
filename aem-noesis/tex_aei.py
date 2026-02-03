@@ -86,7 +86,7 @@ def aeiLoadRGBA(data, texList):
         texBytes = rapi.imageDecodePVRTC(texBytes, width, height, 4)
     elif format in (ATC, ATC | MIPMAP):
         print("ATC interpolated alpha")
-        texBytes = txt2img.decompress_atc(texBytes, width, height, True) # imports slow and artifacts around (asquare) semitransparent pixels
+        texBytes = txt2img.decompress_atc(texBytes, width, height) # imports slow and artifacts around (asquare) semitransparent pixels
     elif format in (DXT1, DXT1 | MIPMAP):
         print("DXT1")
         texFmt = noesis.NOESISTEX_DXT1
