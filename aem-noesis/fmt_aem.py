@@ -7,30 +7,44 @@ from collections import defaultdict
 import sys, os
 scriptDir = os.path.dirname(__file__) + '/ae/'
 sys.path.append(scriptDir) if scriptDir not in sys.path else sys.path
+
 import aem_red
 from read_helpers import *
 
 
 def registerNoesisTypes():
-	handle = noesis.register("Abyss Engine Mesh", ".aem")
-	noesis.setHandlerTypeCheck(handle, aemCheckType)
-	noesis.setHandlerLoadModel(handle, aemLoadModel)
-	#noesis.setHandlerWriteModel(handle, noepyWriteModel)
-	#noesis.setHandlerWriteAnim(handle, noepyWriteAnim)
-	#any noesis.NMSHAREDFL_* flags can be applied here, to affect the model which is handed off to the exporter.
-	#adding noesis.NMSHAREDFL_FLATWEIGHTS_FORCE4 would force us to 4 weights per vert.
-	noesis.setTypeSharedModelFlags(handle, noesis.NMSHAREDFL_FLATWEIGHTS)
+    print("Plugins path: ", os.path.dirname(os.path.realpath(__file__)))
+    h1 = noesis.register("Abyss Engine Mesh V1", ".aem")
+    h2 = noesis.register("Abyss Engine Mesh V2", ".aem")
+    h3 = noesis.register("Abyss Engine Mesh V3", ".aem")
+    h4 = noesis.register("Abyss Engine Mesh V4", ".aem")
+    h5 = noesis.register("Abyss Engine Mesh V5", ".aem")
+    noesis.setHandlerTypeCheck(h1, aem1CheckType)
+    noesis.setHandlerTypeCheck(h2, aem2CheckType)
+    noesis.setHandlerTypeCheck(h3, aem3CheckType)
+    noesis.setHandlerTypeCheck(h4, aem4CheckType)
+    noesis.setHandlerTypeCheck(h5, aem5CheckType)
+    noesis.setHandlerLoadModel(h1, aemLoadModel)
+    noesis.setHandlerLoadModel(h2, aemLoadModel)
+    noesis.setHandlerLoadModel(h3, aemLoadModel)
+    noesis.setHandlerLoadModel(h4, aemLoadModel)
+    noesis.setHandlerLoadModel(h5, aemLoadModel)
+    #noesis.setHandlerWriteModel(handle, noepyWriteModel)
+    #noesis.setHandlerWriteAnim(handle, noepyWriteAnim)
+    #any noesis.NMSHAREDFL_* flags can be applied here, to affect the model which is handed off to the exporter.
+    #adding noesis.NMSHAREDFL_FLATWEIGHTS_FORCE4 would force us to 4 weights per vert.
+    noesis.setTypeSharedModelFlags(h2, noesis.NMSHAREDFL_FLATWEIGHTS)
 
-	#noesis.logPopup()
-	#print("The log can be useful for catching debug prints from preview loads.\nBut don't leave it on when you release your script, or it will probably annoy people.")
-	return 1
+    #noesis.logPopup()
+    #print("The log can be useful for catching debug prints from preview loads.\nBut don't leave it on when you release your script, or it will probably annoy people.")
+    return 1
 
 FLAGS = {
-    "basemesh": 1 | 16,  # every mesh should have it
-    "uvs": 2,           # texture coordinates
-    "normals": 4,
-    "colors": 8,           # vertex colors
-    #"indices": 16, #glDrawArrays optimized index buffer
+    "basemesh": 1,  # every mesh should have it
+    "uvs":      2,  # texture coordinates
+    "normals":  4,
+    "colors":   8,  # vertex colors
+    "indices": 16,  # glDrawArrays optimized index buffer
 }
 
 VERSION = {
@@ -40,21 +54,46 @@ VERSION = {
     "V4AEMesh\x00": 4,
     "V5AEMesh\x00": 5
 }
-
-def aemCheckType(data):
-    if len(data) < 9:
+def aemCheckType(data, ver):
+    magicl = 9 if ver > 1 else 7
+    if len(data) < magicl:
         return 0
     file_aem = NoeBitStream(data)
 
     magic = ""
-    while not magic.endswith("AEMesh\x00"):
+    while not magic.endswith(("V"+str(ver) if ver>1 else "") + "AEMesh\x00"):
         magic += chr(file_aem.readUByte())#.decode("utf-8")
-        if len(magic) > 9:
-            file_aem.close()
-            print("Unsuppored .aem file. Invalid signature") #self.report ...
+        if len(magic) > magicl:
+            #file_aem.close()
+            #print("Unsuppored .aem file. Invalid signature") #self.report ...
             return 0
-    
     return 1
+
+def aem1CheckType(data):
+    return aemCheckType(data, 1)
+def aem2CheckType(data):
+    return aemCheckType(data, 2)
+def aem3CheckType(data):
+    return aemCheckType(data, 3)
+def aem4CheckType(data):
+    return aemCheckType(data, 4)
+def aem5CheckType(data):
+    return aemCheckType(data, 5)  
+
+# def aemCheckType(data):
+#     if len(data) < 9:
+#         return 0
+#     file_aem = NoeBitStream(data)
+#
+#     magic = ""
+#     while not magic.endswith("AEMesh\x00"):
+#         magic += chr(file_aem.readUByte())#.decode("utf-8")
+#         if len(magic) > 9:
+#             file_aem.close()
+#             print("Unsuppored .aem file. Invalid signature") #self.report ...
+#             return 0
+#     
+#     return 1
 
 def sign_check(c, cs):
     if (cs == -1 and c < 0) or (cs == 0x0 and c >= 0):
@@ -80,7 +119,7 @@ def aemLoadModel(data, mdlList):
     bones = []
     root_bone = NoeBone(0, "root", NoeMat43())
   
-    print(os.path.dirname(os.path.realpath(__file__)))
+    #print(os.path.dirname(os.path.realpath(__file__)))
     material = NoeMaterial("defMaterial", os.path.dirname(os.path.realpath(__file__))+"/ae/test.bmp")
     bones.append(root_bone)
 
@@ -94,7 +133,7 @@ def aemLoadModel(data, mdlList):
     if True:
         while (importer_state != "END"):
             if importer_state == "READ_HEADER":
-                print(importer_state)
+                #print(importer_state)
                 magic = ""
                 while not magic.endswith("AEMesh\x00"):
                     magic += chr(file_aem.readUByte())
@@ -103,7 +142,7 @@ def aemLoadModel(data, mdlList):
                         print("Unsuppored .aem file. Invalid signature") #self.report ...
                         return -1
                 flags = file_aem.readUByte()
-                print(magic[:-1])
+                #print(magic[:-1])
                 mesh_present = bool(flags & FLAGS["basemesh"])
                 if mesh_present:
                     uvs_present = bool(flags & FLAGS["uvs"])
@@ -124,7 +163,7 @@ def aemLoadModel(data, mdlList):
                     importer_state = "END"
                     
             if importer_state == "READ_MESH":
-                print(importer_state)
+                #print(importer_state)
                 submeshes_left -= 1            
                 if version in (4, 5):   
                     pivot_point = file_aem.read('fff')
@@ -246,7 +285,7 @@ def aemLoadModel(data, mdlList):
                     importer_state = "END"
                             
             if importer_state == "READ_ANIM": 
-                print(importer_state)
+                #print(importer_state)
                 importer_state = "END"
                 TRAN_X = 1
                 TRAN_Y = 2 
@@ -329,6 +368,7 @@ def aemLoadModel(data, mdlList):
                         scale_keys = []
                         rot_keys = []
 
+                        # manual interpolation, there must be a better way
                         for i, t in enumerate(all_times):
                             if None in trans[t]:
                                 for j, tran in enumerate(trans[t]):
@@ -365,7 +405,6 @@ def aemLoadModel(data, mdlList):
                                         if rots[t][j] == None :
                                             rots[t][j] = 0
                             rot_keys.append(NoeKeyFramedValue(t, NoeAngles(rots[t])))
-                            
                             
                             if None in scals[t]:
                                 for j, scale in enumerate(scals[t]):
