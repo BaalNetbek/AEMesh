@@ -164,10 +164,11 @@ def aemLoadModel(data, mdlList):
                     
             if importer_state == "READ_MESH":
                 #print(importer_state)
-                submeshes_left -= 1            
-                if version in (4, 5):   
+                submeshes_left -= 1    
+                if version in (3, 4, 5):
                     pivot_point = file_aem.read('fff')
-                    print("Pivot point: x: {0}, y: {1}, z: {2}".format(pivot_point[0], pivot_point[1], pivot_point[2]))
+                    print("Pivot point: x: {0}, y: {1}, z: {2}".format(pivot_point[0], pivot_point[1], pivot_point[2]))            
+                if version in (4, 5):   
                     indices_num = file_aem.readUShort()
                     faces = read_ushort_triplets_array(file_aem, indices_num)
                     v_num = file_aem.readUShort()
@@ -185,9 +186,6 @@ def aemLoadModel(data, mdlList):
                             print("quaternions loading failed: "+e)                            
                 elif version in (1, 2, 3):  
                     if version in (2,3):
-                        if version == 3:
-                            pivot_point = file_aem.read('fff')
-                            print('Pivot point: x: {0}, y: {1}, z: {2}'.format(pivot_point[0],pivot_point[1], pivot_point[2]))    
                         vertex_cord_size = 6
                         UV_UNIT_POINT = 1/4096 #(2^12)
                         NORMALS_UNIT_POINT = 1/32768 #(2^15)
@@ -236,6 +234,8 @@ def aemLoadModel(data, mdlList):
                     if version == 1:
                         is_transparent = int.from_bytes(file_aem.read(1), 'little')
 
+                    print(indices_num, "indices")
+                    print(v_num, "vertices")
                 else:
                     print("Unsupported file AEM version: {0}".format(version))
                     return -1
@@ -313,10 +313,13 @@ def aemLoadModel(data, mdlList):
                     boneMat = NoeMat43()
                     bone = NoeBone(bon_idx, "mesh_{0}".format(bon_idx), boneMat, "mesh_0", 0)
                     bones.append(bone)
-                if version in (4, 5):
+                if version in (3, 4, 5):
+                    if version == 3: ver_flag = 0x04
+                    if version == 4: ver_flag = 0x08
+                    if version == 5: ver_flag = 0x10
                     
                     mesh = aem_red.Mesh()
-                    red_success = mesh.read_enhanced_data_from_file(file_aem, flags)
+                    red_success = mesh.read_enhanced_data_from_file(file_aem, ver_flag)
                     print((mesh.transform))
                     if red_success != -1 and len(mesh.transform.keyframes) > 0:
                         # group keyframes by type of tranformation                  

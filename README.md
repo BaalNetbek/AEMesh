@@ -26,7 +26,7 @@
 | &emsp; **TYPE** *normals* \[3\*vc]\[3] $(x, y, z)$                | ✔ **short**, Q8* / Q15** | ✔ **short**, Q15* | ✔ **short**, Q15* | ✔ **float** | ✔ **float** |
 | &emsp; **TYPE** *material?* \[vc][2 or 4] $(g, b)/(a, r, g, b)?$           | ❌      | ❔ **short**   | ✔ **short**  | ✔ **float** | ✔ **float** |
 | &emsp; **float** *bounding_sphere* \[4] $(x, y, z, r)$           | ❌      | ❌        | ❌        | ✔        | ✔        |
-| &emsp; *animation data*                      | ❌      | ❌        | ✔/❔        | ✔        | ✔        |
+| &emsp; *animation data*                      | ❌      | ❌        | ✔        | ✔        | ✔        |
 
 
 \***Qn** is format of storing fixed point fractional numbers as integer in which **n** LSB (least significant bits) store fractional part, for example in Q8:\
@@ -38,7 +38,7 @@
 
 \*\*\*Common [V1]**AEmesh** can have indicies count not divisable by 3 becouse of triangle strip encoding used.
 
-[V1]**AEmesh** has also a diffrent used in GOF3D for BREW. 
+[V1]**AEmesh** has also other variant used in GOF3D for BREW. 
 There can be more undocumented version.
 ### Animation data:
 
