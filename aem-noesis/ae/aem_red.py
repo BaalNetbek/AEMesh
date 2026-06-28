@@ -1,36 +1,68 @@
 import struct
 import math
 
+
+V3 = 0x04
+V4 = 0x08
+V5 = 0x10
+
 # keframe types
 # since V3 
 TRAN_X = 1
 TRAN_Y = 2 
 TRAN_Z = 4
-TRAN_XYZ = 7
+TRAN_XYZ = TRAN_X|TRAN_Y|TRAN_Z
 ROT_X = 0x40
 ROT_Y = 0x80 
 ROT_Z = 0x100
-ROT_XYZ = 0x1c0
+ROT_XYZ = ROT_X|ROT_Y|ROT_Z
 SCALE_X = 8
 SCALE_Y = 0x10
 SCALE_Z = 0x20
-SCALE_XYZ = 0x38
+SCALE_XYZ = SCALE_X|SCALE_Y|SCALE_Z
 
-OPACITY = 0x200 # need verify
+#since V4
+_UNKNOWN = 0x200 # need verify, internaly divided by 100
+
+#since V5, 
+UV_POS_X = 0x400
+UV_POS_Y = 0x800
+UV_POS_Z = 0x1000 # unused
+UV_POS_XYZ = UV_POS_X|UV_POS_Y|UV_POS_Z # unused
+
+UV_SCA_X = 0x2000
+UV_SCA_Y = 0x4000
+UV_SCA_Z = 0x8000 # unused
+UV_SCA_XYZ = UV_SCA_X|UV_SCA_Y|UV_SCA_Z # unused
+
+UV_ROT_X = 0x10000 # unused
+UV_ROT_Y = 0x20000 # unused
+UV_ROT_Z = 0x40000
+UV_ROT_XYZ = UV_ROT_X|UV_ROT_Y|UV_ROT_Z # unused
+
+# 'unused' flags are handled by the engine interally 
+# but aren't used in the official AEMesh formats. 
+
 
 _type2str = {
-    TRAN_X: "TRAN_X",
-    TRAN_Y: "TRAN_Y",
-    TRAN_Z: "TRAN_Z",
-    TRAN_XYZ: "TRAN_XYZ",
-    ROT_X: "ROT_X",
-    ROT_Y: "ROT_Y",
-    ROT_Z: "ROT_Z",
-    ROT_XYZ: "ROT_XYZ",
-    SCALE_X: "SCALE_X",
-    SCALE_Y: "SCALE_Y",
-    SCALE_Z: "SCALE_Z",
-    SCALE_XYZ: "SCALE_XYZ",
+    TRAN_X:     "TRAN_X",
+    TRAN_Y:     "TRAN_Y",
+    TRAN_Z:     "TRAN_Z",
+    TRAN_XYZ:   "TRAN_XYZ",
+    ROT_X:      "ROT_X",
+    ROT_Y:      "ROT_Y",
+    ROT_Z:      "ROT_Z",
+    ROT_XYZ:    "ROT_XYZ",
+    SCALE_X:    "SCALE_X",
+    SCALE_Y:    "SCALE_Y",
+    SCALE_Z:    "SCALE_Z",
+    SCALE_XYZ:  "SCALE_XYZ",
+    _UNKNOWN:    "OPACITY?",
+    UV_SCA_X:   "UV_SCA_X",
+    UV_SCA_Y:   "UV_SCA_Y",
+    UV_POS_X:   "UV_POS_X",
+    UV_POS_Y:   "UV_POS_Y",
+    UV_ROT_Z:   "UV_ROT_Z",
 }
     
 
@@ -91,9 +123,9 @@ class Mesh:
         self.bsphereZ = 0
         self.bsphereR = 0
         self.transform = None
-        self.field_0x85 = 0
+        self.uv_animated = False
 
-    def read_enhanced_data_from_file(self, file_obj, flags):
+    def read_enhanced_data_from_file(self, file_obj, version):
         time_between_frames = float('inf')
         transform = Transform()
         try:
@@ -164,8 +196,8 @@ class Mesh:
                             time_between_frames = time
                         value = struct.unpack('f', file_obj.read(4))[0]
                         key_types = [ROT_X, ROT_Y, ROT_Z]
-                        if i == 1:
-                            print(file_obj.tell())
+                        # if i == 1:
+                        #     print(file_obj.tell())
                         transform.insert_keyframe(value, key_types[i], int(time))
 
             
@@ -194,8 +226,7 @@ class Mesh:
                         key_types = [SCALE_X, SCALE_Y, SCALE_Z]
                         transform.insert_keyframe(value, key_types[i], int(time))
 
-            # Handle flags 8 or 16
-            if flags & (8 | 16):
+            if version in (V4, V5):
                 type_val = struct.unpack('h', file_obj.read(2))[0]
                 if type_val == 2:
                     key_frame_cnt = struct.unpack('h', file_obj.read(2))[0]
@@ -204,13 +235,13 @@ class Mesh:
                         if 0.0 < time < time_between_frames:
                             time_between_frames = time
                         value = struct.unpack('f', file_obj.read(4))[0]
-                        transform.insert_keyframe(value, 0x200, int(time))
+                        transform.insert_keyframe(value, _UNKNOWN, int(time))
 
-            # Handle flag 16
-            if flags & 16:
-                special_keys_present = struct.unpack('h', file_obj.read(2))[0]
-                if special_keys_present != 0:
-                    key_types = [0x400, 0x800, 0x2000, 0x4000, 0, 0, 0x40000]
+            # UV
+            if version == V5:
+                uv_keyframes = struct.unpack('h', file_obj.read(2))[0]
+                if uv_keyframes != 0:
+                    key_types = [UV_POS_X, UV_POS_Y, UV_SCA_X, UV_SCA_Y, 0, 0, UV_ROT_Z]
                     for i in range(7):
                         key_frame_cnt = struct.unpack('h', file_obj.read(2))[0]
                         for _ in range(key_frame_cnt):
@@ -222,10 +253,10 @@ class Mesh:
                             if i == 6:
                                 value = (value * math.pi) / 180.0
                             transform.insert_keyframe(value, key_types[i], int(time))
-                            self.field_0x85 = 1
-                    padding = file_obj.read(2)
-                    if padding != b'\x00\x00':
-                        print("UNEXPECTED BYTES %s  @ %d" % (padding.hex() ,file_obj.tell()-2))
+                            self.uv_animated = True
+            padding = file_obj.read(2)
+            if padding != b'\x00\x00':
+                print("UNEXPECTED BYTES %s @ %d" % (padding.hex() ,file_obj.tell()-2))
 
             if transform.get_keyframe_count() < 1:
                 return -1
