@@ -5,6 +5,7 @@
 import struct
 
 def decompress_atc(data: bytes, width: int, height: int) -> bytearray:
+    """decompresses ATC_RGBA_Explicit"""
     MASK_03 = 0x03
     MASK_0F = 0x0F
     MASK_1F = 0x1F
