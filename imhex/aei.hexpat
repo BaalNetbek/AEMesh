@@ -1,4 +1,4 @@
-// visualisation only for uncompressed textures
+// uncompressed textures only
 struct tex{
     u16 x,y,w,h;
 };
